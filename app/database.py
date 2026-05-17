@@ -1,16 +1,26 @@
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import get_settings
 
 settings = get_settings()
 
+# For SQLite, resolve relative paths to the project root directory
+database_url = settings.DATABASE_URL
+if database_url.startswith("sqlite:///./"):
+    # Convert relative path to absolute path based on project root
+    db_filename = database_url.replace("sqlite:///./", "")
+    project_root = Path(__file__).parent.parent
+    db_path = project_root / db_filename
+    database_url = f"sqlite:///{db_path}"
+
 # Handle SQLite vs PostgreSQL connection args
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+if database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    database_url,
     connect_args=connect_args,
     echo=settings.DEBUG,
 )
@@ -34,4 +44,7 @@ def get_db():
 
 def create_tables():
     """Create all database tables."""
+    # Import models to ensure they are registered with Base.metadata
+    from app.models.user import User  # noqa: F401
+    from app.models.transaction import Transaction  # noqa: F401
     Base.metadata.create_all(bind=engine)
