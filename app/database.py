@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import subprocess
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import get_settings
@@ -12,6 +14,15 @@ if database_url.startswith("sqlite:///./"):
     db_filename = database_url.replace("sqlite:///./", "")
     project_root = Path(__file__).parent.parent
     db_path = project_root / db_filename
+
+    # Ensure the database file exists and is writable
+    # macOS com.apple.provenance attribute can block SQLite writes
+    if not db_path.exists():
+        db_path.touch()
+    # Clear any extended attributes that might block writes (macOS)
+    subprocess.run(["xattr", "-c", str(db_path)], capture_output=True)
+    os.chmod(str(db_path), 0o666)
+
     database_url = f"sqlite:///{db_path}"
 
 # Handle SQLite vs PostgreSQL connection args
