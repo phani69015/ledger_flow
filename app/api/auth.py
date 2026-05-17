@@ -43,13 +43,16 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    """Authenticate user and return JWT token."""
+    """Authenticate user and return JWT token. Accepts email or username."""
+    # Try to find user by email first, then by username
     user = db.query(User).filter(User.email == user_data.email).first()
+    if not user:
+        user = db.query(User).filter(User.username == user_data.email).first()
 
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid email/username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
