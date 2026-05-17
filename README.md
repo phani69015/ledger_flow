@@ -36,6 +36,7 @@ AI-powered ETL and analytics platform for processing financial transactions. Bui
 
 ## Features
 
+- **Web Dashboard** - Modern dark-themed UI with real-time charts and analytics
 - **CSV/JSON Ingestion Pipelines** - Upload financial data with automated validation, transformation, and deduplication
 - **AI Transaction Categorization** - Intelligent keyword-based categorization with confidence scoring across 11 categories
 - **Anomaly Detection** - Z-Score and IQR-based detection for unusual transactions
@@ -50,6 +51,7 @@ AI-powered ETL and analytics platform for processing financial transactions. Bui
 | Component | Technology |
 |-----------|-----------|
 | Backend | Python 3.11+, FastAPI |
+| Frontend | HTML5, CSS3, JavaScript, Chart.js |
 | Database | PostgreSQL (production), SQLite (development) |
 | ORM | SQLAlchemy 2.0 |
 | Data Processing | Pandas, NumPy |
@@ -85,6 +87,7 @@ uvicorn app.main:app --reload
 
 The API will be available at `http://localhost:8000`
 
+- **Web Dashboard**: `http://localhost:8000` (main UI)
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
@@ -100,6 +103,18 @@ docker-compose down
 # Stop and remove data volumes
 docker-compose down -v
 ```
+
+## Web Dashboard
+
+The built-in web dashboard provides a complete financial analytics interface:
+
+- **Login/Register** - Secure authentication with JWT tokens
+- **Dashboard** - Real-time stats, income vs expense trend charts, and category breakdown (doughnut chart)
+- **Transactions** - Sortable/filterable table of all transactions with category badges and anomaly flags
+- **Upload** - Drag-and-drop file upload with instant processing feedback (records processed, anomalies detected, categories assigned)
+- **Anomalies** - Visual anomaly report showing flagged transactions with severity scores and explanations
+
+The UI is built with vanilla HTML/CSS/JS and Chart.js — no build step required.
 
 ## API Endpoints
 
@@ -275,6 +290,10 @@ ledgerflow/
 │   │   └── anomaly_detection.py # Statistical anomaly detection
 │   └── utils/
 │       └── security.py      # JWT & password utilities
+├── static/
+│   ├── index.html           # Web dashboard (single page app)
+│   ├── css/style.css        # Dashboard styles
+│   └── js/app.js            # Frontend logic & API client
 ├── tests/
 │   ├── conftest.py          # Test fixtures & setup
 │   ├── test_auth.py         # Authentication tests

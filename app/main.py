@@ -1,5 +1,8 @@
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.database import create_tables
@@ -9,6 +12,9 @@ from app.api.analytics import router as analytics_router
 
 settings = get_settings()
 
+# Path to static files
+STATIC_DIR = Path(__file__).parent.parent / "static"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,6 +23,8 @@ async def lifespan(app: FastAPI):
     create_tables()
     print(f"[LedgerFlow] Database tables created successfully")
     print(f"[LedgerFlow] Using database: {settings.DATABASE_URL.split('://')[0]}")
+    print(f"[LedgerFlow] UI available at: http://localhost:8000")
+    print(f"[LedgerFlow] API docs at: http://localhost:8000/docs")
     yield
     # Shutdown
     print("[LedgerFlow] Shutting down...")
@@ -44,21 +52,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include API routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(transactions_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 
+# Serve static files (CSS, JS)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-@app.get("/", tags=["Health"])
-def root():
-    """Health check endpoint."""
-    return {
-        "service": "LedgerFlow",
-        "version": "1.0.0",
-        "status": "healthy",
-        "docs": "/docs",
-    }
+
+@app.get("/", tags=["UI"])
+def serve_ui():
+    """Serve the LedgerFlow web dashboard."""
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 
 @app.get("/health", tags=["Health"])

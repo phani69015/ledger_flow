@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LedgerFlow - AI Financial Analytics</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- ==================== AUTH PAGE ==================== -->
+    <div id="auth-page" class="auth-container">
+        <!-- Login Form -->
+        <div id="login-form" class="auth-card">
+            <h1>LedgerFlow</h1>
+            <p>AI-powered financial transaction analytics</p>
+            
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="Enter your password">
+            </div>
+            
+            <button id="login-submit" class="btn btn-primary">Sign In</button>
+            
+            <div class="auth-toggle">
+                Don't have an account? <a onclick="showRegisterForm()">Create one</a>
+            </div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="auth-card" style="display:none">
+            <h1>Create Account</h1>
+            <p>Start tracking your financial transactions</p>
+            
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="register-email" placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="register-username" placeholder="Choose a username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="register-password" placeholder="Min 6 characters">
+            </div>
+            
+            <button id="register-submit" class="btn btn-primary">Create Account</button>
+            
+            <div class="auth-toggle">
+                Already have an account? <a onclick="showLoginForm()">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== APP DASHBOARD ==================== -->
+    <div id="app-container" class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-logo">LedgerFlow</div>
+            
+            <div class="nav-item active" data-page="dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </div>
+            <div class="nav-item" data-page="transactions">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Transactions
+            </div>
+            <div class="nav-item" data-page="upload">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Data
+            </div>
+            <div class="nav-item" data-page="anomalies">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Anomalies
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div>
+                        <div class="user-name" id="user-name">User</div>
+                        <div class="user-email" id="user-email">user@email.com</div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary btn-sm" style="width:100%;margin-top:0.75rem;">Logout</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- ===== DASHBOARD PAGE ===== -->
+            <section id="page-dashboard" class="page-section active">
+                <div class="page-header">
+                    <h2>Dashboard</h2>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Transactions</div>
+                        <div class="stat-value" id="stat-total">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Income</div>
+                        <div class="stat-value" id="stat-income" style="color:var(--success)">$0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Expenses</div>
+                        <div class="stat-value" id="stat-expenses" style="color:var(--danger)">$0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Net Balance</div>
+                        <div class="stat-value" id="stat-balance">$0</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Income vs Expenses Trend</h3>
+                        <canvas id="trend-chart" height="100"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Spending by Category</h3>
+                        <canvas id="category-chart" height="200"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TRANSACTIONS PAGE ===== -->
+            <section id="page-transactions" class="page-section">
+                <div class="page-header">
+                    <h2>Transactions</h2>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>All Transactions</h3>
+                        <div class="table-filters">
+                            <select id="filter-type" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="credit">Credit</option>
+                                <option value="debit">Debit</option>
+                            </select>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-tbody">
+                            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ===== UPLOAD PAGE ===== -->
+            <section id="page-upload" class="page-section">
+                <div class="page-header">
+                    <h2>Upload Transactions</h2>
+                </div>
+
+                <div id="upload-zone" class="upload-zone">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <h3>Drop your file here or click to browse</h3>
+                    <p>Supports CSV and JSON files with transaction data</p>
+                    <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary)">Required columns: date, amount, description</p>
+                </div>
+                <input type="file" id="file-input" accept=".csv,.json" style="display:none">
+                
+                <div id="upload-spinner" class="spinner" style="display:none"></div>
+
+                <div id="upload-result" class="upload-result">
+                    <h3>Upload Successful</h3>
+                    <div class="result-stats">
+                        <div class="result-stat">
+                            <div class="value" id="result-total">0</div>
+                            <div class="label">Total Records</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="value" id="result-success" style="color:var(--success)">0</div>
+                            <div class="label">Processed</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="value" id="result-duplicates" style="color:var(--warning)">0</div>
+                            <div class="label">Duplicates Skipped</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="value" id="result-anomalies" style="color:var(--danger)">0</div>
+                            <div class="label">Anomalies Detected</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="value" id="result-categories" style="color:var(--primary-light)">0</div>
+                            <div class="label">Auto-Categorized</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== ANOMALIES PAGE ===== -->
+            <section id="page-anomalies" class="page-section">
+                <div class="page-header">
+                    <h2>Anomaly Detection</h2>
+                </div>
+
+                <div class="anomaly-list" id="anomalies-list">
+                    <p style="text-align:center;color:var(--text-secondary);padding:2rem;">Loading...</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
