@@ -172,8 +172,13 @@ def analyze_transaction(
 def run_anomaly_detection_for_user(db: Session, user_id: int) -> Dict:
     """
     Run anomaly detection across all transactions for a user.
-    Updates anomaly flags in the database.
+    Uses per-category comparison for context-aware detection:
+    - A $1200 rent payment is normal (compared to other rent payments)
+    - A $1200 food transaction is anomalous (compared to other food transactions)
 
+    Falls back to global type-based comparison if category has too few transactions.
+
+    Updates anomaly flags in the database.
     Returns summary of detection results.
     """
     # Get all user transactions ordered by date
@@ -191,15 +196,31 @@ def run_anomaly_detection_for_user(db: Session, user_id: int) -> Dict:
             "message": f"Need at least {MIN_TRANSACTIONS_FOR_DETECTION} transactions for detection",
         }
 
-    # Separate by transaction type
+    # Build per-category amount pools
+    category_amounts = {}  # {"Food & Dining": [45, 85, 35, ...], "Housing": [1200, ...]}
+    for t in transactions:
+        key = (t.category or "Uncategorized", t.transaction_type)
+        if key not in category_amounts:
+            category_amounts[key] = []
+        category_amounts[key].append(t.amount)
+
+    # Also build global type-based pools as fallback
     debit_amounts = [t.amount for t in transactions if t.transaction_type == "debit"]
     credit_amounts = [t.amount for t in transactions if t.transaction_type == "credit"]
 
     anomalies_found = 0
 
     for txn in transactions:
-        # Use historical amounts of the same type
-        historical = debit_amounts if txn.transaction_type == "debit" else credit_amounts
+        # Try per-category comparison first (more accurate)
+        category_key = (txn.category or "Uncategorized", txn.transaction_type)
+        category_history = category_amounts.get(category_key, [])
+
+        if len(category_history) >= MIN_TRANSACTIONS_FOR_DETECTION:
+            # Enough data in this category — compare within category
+            historical = category_history
+        else:
+            # Not enough category data — fall back to global type comparison
+            historical = debit_amounts if txn.transaction_type == "debit" else credit_amounts
 
         result = analyze_transaction(txn.amount, historical, txn.transaction_type)
 
@@ -216,7 +237,7 @@ def run_anomaly_detection_for_user(db: Session, user_id: int) -> Dict:
     return {
         "total_analyzed": len(transactions),
         "anomalies_found": anomalies_found,
-        "detection_methods": ["Z-Score", "IQR"],
+        "detection_methods": ["Z-Score (per-category)", "IQR (per-category)"],
         "thresholds": {
             "z_score": Z_SCORE_THRESHOLD,
             "iqr_multiplier": IQR_MULTIPLIER,
