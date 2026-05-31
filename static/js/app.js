@@ -394,7 +394,6 @@ async function processFile() {
         const result = await api('/transactions/upload', {
             method: 'POST',
             body: formData,
-            headers: { 'Authorization': `Bearer ${authToken}` },
         });
         
         // API finished - complete all steps
