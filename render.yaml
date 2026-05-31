@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ledgerflow
+    runtime: docker
+    repo: https://github.com/phani69015/ledger_flow.git
+    branch: main
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./ledgerflow.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+      - key: DEBUG
+        value: "false"

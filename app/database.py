@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import platform
 import subprocess
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -16,11 +17,13 @@ if database_url.startswith("sqlite:///./"):
     db_path = project_root / db_filename
 
     # Ensure the database file exists and is writable
-    # macOS com.apple.provenance attribute can block SQLite writes
     if not db_path.exists():
         db_path.touch()
-    # Clear any extended attributes that might block writes (macOS)
-    subprocess.run(["xattr", "-c", str(db_path)], capture_output=True)
+
+    # macOS: clear extended attributes that might block SQLite writes
+    if platform.system() == "Darwin":
+        subprocess.run(["xattr", "-c", str(db_path)], capture_output=True)
+
     os.chmod(str(db_path), 0o666)
 
     database_url = f"sqlite:///{db_path}"

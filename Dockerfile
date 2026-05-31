@@ -30,8 +30,11 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY . .
 
-# Expose port
+# Create writable directory for SQLite database
+RUN mkdir -p /app/data && chmod 777 /app/data
+
+# Expose port (Render uses PORT env variable)
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application - use PORT env var if set (Render), default to 8000
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
