@@ -177,39 +177,115 @@
                     <h2>Upload Transactions</h2>
                 </div>
 
-                <div id="upload-zone" class="upload-zone">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <h3>Drop your file here or click to browse</h3>
-                    <p>Supports CSV, JSON, and XLSX (Excel) files</p>
-                    <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary)">Bank statements auto-detected. Standard format: date, amount, description</p>
+                <!-- Step 1: File Selection -->
+                <div id="upload-step1">
+                    <div id="upload-zone" class="upload-zone">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <h3>Drop your file here or click to browse</h3>
+                        <p>Supports CSV, JSON, and XLSX (Excel) files</p>
+                        <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary)">Bank statements auto-detected. Standard format: date, amount, description</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".csv,.json,.xlsx,.xls" style="display:none">
                 </div>
-                <input type="file" id="file-input" accept=".csv,.json,.xlsx,.xls" style="display:none">
-                
-                <div id="upload-spinner" class="spinner" style="display:none"></div>
 
-                <div id="upload-result" class="upload-result">
-                    <h3>Upload Successful</h3>
-                    <div class="result-stats">
-                        <div class="result-stat">
-                            <div class="value" id="result-total">0</div>
-                            <div class="label">Total Records</div>
+                <!-- Step 2: File Selected - Ready to Process -->
+                <div id="upload-step2" style="display:none">
+                    <div class="file-preview">
+                        <div class="file-preview-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         </div>
-                        <div class="result-stat">
-                            <div class="value" id="result-success" style="color:var(--success)">0</div>
-                            <div class="label">Processed</div>
+                        <div class="file-preview-info">
+                            <div class="file-preview-name" id="file-name">transactions.csv</div>
+                            <div class="file-preview-size" id="file-size">2.4 MB</div>
                         </div>
-                        <div class="result-stat">
-                            <div class="value" id="result-duplicates" style="color:var(--warning)">0</div>
-                            <div class="label">Duplicates Skipped</div>
+                        <button class="btn btn-secondary btn-sm" id="file-change-btn">Change File</button>
+                    </div>
+                    <button class="btn btn-primary" id="process-btn" style="width:100%;margin-top:1.25rem;padding:1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="margin-right:0.5rem"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Start Processing
+                    </button>
+                </div>
+
+                <!-- Step 3: Processing Progress -->
+                <div id="upload-step3" style="display:none">
+                    <div class="progress-container">
+                        <div class="progress-header">
+                            <h3 id="progress-title">Processing your file...</h3>
+                            <span class="progress-percent" id="progress-percent">0%</span>
                         </div>
-                        <div class="result-stat">
-                            <div class="value" id="result-anomalies" style="color:var(--danger)">0</div>
-                            <div class="label">Anomalies Detected</div>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="progress-bar"></div>
                         </div>
-                        <div class="result-stat">
-                            <div class="value" id="result-categories" style="color:var(--primary-light)">0</div>
-                            <div class="label">Auto-Categorized</div>
+                        <div class="progress-steps">
+                            <div class="progress-step" id="step-parse">
+                                <div class="step-icon step-pending"></div>
+                                <div class="step-info">
+                                    <div class="step-label">Parsing File</div>
+                                    <div class="step-desc">Reading and extracting data from file</div>
+                                </div>
+                            </div>
+                            <div class="progress-step" id="step-validate">
+                                <div class="step-icon step-pending"></div>
+                                <div class="step-info">
+                                    <div class="step-label">Validating & Cleaning</div>
+                                    <div class="step-desc">Checking data quality, removing invalid rows</div>
+                                </div>
+                            </div>
+                            <div class="progress-step" id="step-categorize">
+                                <div class="step-icon step-pending"></div>
+                                <div class="step-info">
+                                    <div class="step-label">AI Categorization</div>
+                                    <div class="step-desc">Classifying transactions into categories</div>
+                                </div>
+                            </div>
+                            <div class="progress-step" id="step-anomaly">
+                                <div class="step-icon step-pending"></div>
+                                <div class="step-info">
+                                    <div class="step-label">Anomaly Detection</div>
+                                    <div class="step-desc">Identifying unusual transactions per category</div>
+                                </div>
+                            </div>
+                            <div class="progress-step" id="step-done">
+                                <div class="step-icon step-pending"></div>
+                                <div class="step-info">
+                                    <div class="step-label">Complete</div>
+                                    <div class="step-desc">All stages finished</div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Results -->
+                <div id="upload-step4" style="display:none">
+                    <div class="upload-result show">
+                        <div class="result-header">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="28" height="28"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <h3>Processing Complete</h3>
+                        </div>
+                        <div class="result-stats">
+                            <div class="result-stat">
+                                <div class="value" id="result-total">0</div>
+                                <div class="label">Total Records</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="value" id="result-success" style="color:var(--success)">0</div>
+                                <div class="label">Processed</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="value" id="result-duplicates" style="color:var(--warning)">0</div>
+                                <div class="label">Duplicates</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="value" id="result-anomalies" style="color:var(--danger)">0</div>
+                                <div class="label">Anomalies</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="value" id="result-categories" style="color:var(--primary-light)">0</div>
+                                <div class="label">Categorized</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="upload-another-btn" style="width:100%;margin-top:1.5rem;">Upload Another File</button>
                     </div>
                 </div>
             </section>

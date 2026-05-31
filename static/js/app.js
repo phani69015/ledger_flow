@@ -276,38 +276,154 @@ function renderTransactions(transactions) {
 }
 
 // ========================
-// File Upload
+// File Upload (Two-Step Flow)
 // ========================
-async function uploadFile(file) {
+let selectedFile = null;
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function showUploadStep(step) {
+    document.getElementById('upload-step1').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('upload-step2').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('upload-step3').style.display = step === 3 ? 'block' : 'none';
+    document.getElementById('upload-step4').style.display = step === 4 ? 'block' : 'none';
+}
+
+function onFileSelected(file) {
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'json', 'xlsx', 'xls'].includes(ext)) {
+        showToast('Unsupported file format. Use CSV, JSON, or XLSX.', 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = formatFileSize(file.size);
+    showUploadStep(2);
+}
+
+function resetUpload() {
+    selectedFile = null;
+    document.getElementById('file-input').value = '';
+    showUploadStep(1);
+    // Reset progress steps
+    const steps = ['step-parse', 'step-validate', 'step-categorize', 'step-anomaly', 'step-done'];
+    steps.forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('active', 'completed');
+        el.querySelector('.step-icon').className = 'step-icon step-pending';
+    });
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('progress-percent').textContent = '0%';
+}
+
+function setStepState(stepId, state) {
+    const el = document.getElementById(stepId);
+    const icon = el.querySelector('.step-icon');
+    
+    el.classList.remove('active', 'completed');
+    icon.className = 'step-icon';
+    
+    if (state === 'active') {
+        el.classList.add('active');
+        icon.classList.add('step-active');
+    } else if (state === 'done') {
+        el.classList.add('completed');
+        icon.classList.add('step-done');
+    } else {
+        icon.classList.add('step-pending');
+    }
+}
+
+function setProgress(percent, title) {
+    document.getElementById('progress-bar').style.width = percent + '%';
+    document.getElementById('progress-percent').textContent = percent + '%';
+    if (title) document.getElementById('progress-title').textContent = title;
+}
+
+async function processFile() {
+    if (!selectedFile) return;
+    
+    showUploadStep(3);
+    
+    const steps = ['step-parse', 'step-validate', 'step-categorize', 'step-anomaly', 'step-done'];
+    
+    // Simulate progress stages while the API processes
+    // (The actual API does all stages in one call, but we animate the steps)
+    
+    // Stage 1: Parsing
+    setStepState('step-parse', 'active');
+    setProgress(10, 'Parsing file...');
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', selectedFile);
+    
+    // Start a progress animation that runs while waiting for the API
+    let currentProgress = 10;
+    const progressInterval = setInterval(() => {
+        if (currentProgress < 85) {
+            currentProgress += Math.random() * 3;
+            setProgress(Math.min(Math.round(currentProgress), 85));
+            
+            // Update step states based on progress
+            if (currentProgress > 20) {
+                setStepState('step-parse', 'done');
+                setStepState('step-validate', 'active');
+                setProgress(Math.round(currentProgress), 'Validating & cleaning data...');
+            }
+            if (currentProgress > 40) {
+                setStepState('step-validate', 'done');
+                setStepState('step-categorize', 'active');
+                setProgress(Math.round(currentProgress), 'Running AI categorization...');
+            }
+            if (currentProgress > 65) {
+                setStepState('step-categorize', 'done');
+                setStepState('step-anomaly', 'active');
+                setProgress(Math.round(currentProgress), 'Detecting anomalies...');
+            }
+        }
+    }, 800);
     
     try {
-        document.getElementById('upload-spinner').style.display = 'block';
-        
         const result = await api('/transactions/upload', {
             method: 'POST',
             body: formData,
             headers: { 'Authorization': `Bearer ${authToken}` },
         });
         
-        document.getElementById('upload-spinner').style.display = 'none';
-        showUploadResult(result);
+        // API finished - complete all steps
+        clearInterval(progressInterval);
+        
+        setStepState('step-parse', 'done');
+        setStepState('step-validate', 'done');
+        setStepState('step-categorize', 'done');
+        setStepState('step-anomaly', 'done');
+        setStepState('step-done', 'done');
+        setProgress(100, 'Processing complete!');
+        
+        // Wait a moment then show results
+        await new Promise(r => setTimeout(r, 800));
+        
+        showUploadStep(4);
+        document.getElementById('result-total').textContent = result.total_records.toLocaleString();
+        document.getElementById('result-success').textContent = result.successful.toLocaleString();
+        document.getElementById('result-duplicates').textContent = result.duplicates_skipped.toLocaleString();
+        document.getElementById('result-anomalies').textContent = result.anomalies_detected.toLocaleString();
+        document.getElementById('result-categories').textContent = result.categories_assigned.toLocaleString();
+        
         showToast(result.message, 'success');
+        
     } catch (e) {
-        document.getElementById('upload-spinner').style.display = 'none';
-        showToast(e.message, 'error');
+        clearInterval(progressInterval);
+        showUploadStep(1);
+        showToast(e.message || 'Processing failed', 'error');
     }
-}
-
-function showUploadResult(result) {
-    const el = document.getElementById('upload-result');
-    el.classList.add('show');
-    document.getElementById('result-total').textContent = result.total_records;
-    document.getElementById('result-success').textContent = result.successful;
-    document.getElementById('result-duplicates').textContent = result.duplicates_skipped;
-    document.getElementById('result-anomalies').textContent = result.anomalies_detected;
-    document.getElementById('result-categories').textContent = result.categories_assigned;
 }
 
 // ========================
@@ -421,12 +537,21 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         uploadZone.classList.remove('dragover');
         const file = e.dataTransfer.files[0];
-        if (file) uploadFile(file);
+        if (file) onFileSelected(file);
     });
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) uploadFile(file);
+        if (file) onFileSelected(file);
     });
+    
+    // Process button
+    document.getElementById('process-btn').addEventListener('click', processFile);
+    
+    // Change file button
+    document.getElementById('file-change-btn').addEventListener('click', resetUpload);
+    
+    // Upload another button
+    document.getElementById('upload-another-btn').addEventListener('click', resetUpload);
     
     // Transaction filters
     document.getElementById('filter-type').addEventListener('change', (e) => {
