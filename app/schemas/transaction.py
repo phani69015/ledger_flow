@@ -36,6 +36,7 @@ class TransactionResponse(BaseModel):
     anomaly_score: Optional[float] = None
     anomaly_reason: Optional[str] = None
     source_file: Optional[str] = None
+    account_no: Optional[str] = None
     created_at: Optional[datetime] = None
 
 

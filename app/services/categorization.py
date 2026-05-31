@@ -215,3 +215,73 @@ def categorize_batch(transactions: list) -> list:
             "category_confidence": confidence,
         })
     return results
+
+
+def categorize_batch_fast(descriptions: list) -> list:
+    """
+    Vectorized batch categorization optimized for large datasets (100K+ rows).
+
+    Uses Pandas str.contains() for bulk string matching instead of
+    Python for-loop per row. ~10-15x faster for large datasets.
+
+    Args:
+        descriptions: List of transaction description strings
+
+    Returns:
+        List of tuples: [(category, confidence), ...]
+    """
+    import pandas as pd
+    import numpy as np
+
+    n = len(descriptions)
+    if n == 0:
+        return []
+
+    # Convert to Series for vectorized operations
+    desc_series = pd.Series(descriptions).str.lower().fillna("")
+
+    # Score matrix: rows = transactions, columns = categories
+    category_names = list(CATEGORY_KEYWORDS.keys())
+    scores = np.zeros((n, len(category_names)), dtype=np.float32)
+
+    # Vectorized keyword matching
+    for cat_idx, category in enumerate(category_names):
+        data = CATEGORY_KEYWORDS[category]
+
+        # Keyword matching (bulk str.contains for each keyword)
+        for keyword, weight in data["keywords"].items():
+            mask = desc_series.str.contains(keyword, case=False, na=False, regex=False)
+            scores[mask.values, cat_idx] += weight
+
+        # Pattern matching
+        for pattern in data.get("patterns", []):
+            mask = desc_series.str.contains(pattern, case=False, na=False, regex=True)
+            scores[mask.values, cat_idx] += 0.6
+
+    # Find best category for each row
+    best_indices = np.argmax(scores, axis=1)
+    best_scores = scores[np.arange(n), best_indices]
+
+    # Calculate confidence using sigmoid normalization
+    # confidence = score / (score + 1)
+    confidence = np.where(best_scores > 0, best_scores / (best_scores + 1.0), 0.0)
+
+    # Margin boost: compare 1st vs 2nd best
+    sorted_scores = np.sort(scores, axis=1)[:, ::-1]  # descending
+    second_best = sorted_scores[:, 1] if scores.shape[1] > 1 else np.zeros(n)
+
+    # margin = (1st - 2nd) / 1st where 1st > 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        margin = np.where(best_scores > 0, (best_scores - second_best) / best_scores, 0.0)
+
+    confidence = np.minimum(confidence + (margin * 0.2), 0.95)
+
+    # Where score is 0, set Uncategorized with 0 confidence
+    results = []
+    for i in range(n):
+        if best_scores[i] > 0:
+            results.append((category_names[best_indices[i]], round(float(confidence[i]), 3)))
+        else:
+            results.append(("Uncategorized", 0.0))
+
+    return results

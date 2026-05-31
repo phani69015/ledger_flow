@@ -30,6 +30,7 @@ class Transaction(Base):
 
     # Metadata
     source_file = Column(String(255), nullable=True)  # which file it was ingested from
+    account_no = Column(String(50), nullable=True)  # bank account number
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

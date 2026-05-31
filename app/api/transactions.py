@@ -12,7 +12,7 @@ from app.schemas.transaction import (
 )
 from app.api.deps import get_current_user
 from app.services.ingestion import ingest_transactions
-from app.services.categorization import categorize_transaction
+from app.services.categorization import categorize_transaction, categorize_batch_fast
 from app.services.anomaly_detection import run_anomaly_detection_for_user
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -25,23 +25,28 @@ async def upload_transactions(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Upload a CSV or JSON file containing financial transactions.
+    Upload a CSV, JSON, or XLSX file containing financial transactions.
+    Supports standard format and bank statement format (auto-detected).
+
     The pipeline will:
-    1. Parse and validate the file
-    2. Deduplicate against existing records
-    3. Auto-categorize transactions using AI
-    4. Run anomaly detection
-    5. Store processed transactions
+    1. Parse the file (CSV/JSON/XLSX)
+    2. Auto-detect format (standard vs bank statement)
+    3. Normalize columns via smart mapping
+    4. Validate and clean data
+    5. Deduplicate against existing records
+    6. Auto-categorize transactions using AI (vectorized)
+    7. Run per-category anomaly detection
+    8. Store processed transactions
     """
     # Validate file type
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
     file_ext = file.filename.rsplit(".", 1)[-1].lower()
-    if file_ext not in ("csv", "json"):
+    if file_ext not in ("csv", "json", "xlsx", "xls"):
         raise HTTPException(
             status_code=400,
-            detail="Only CSV and JSON files are supported",
+            detail="Supported formats: CSV, JSON, XLSX",
         )
 
     # Read file content
@@ -61,7 +66,7 @@ async def upload_transactions(
     if "error" in result:
         raise HTTPException(status_code=422, detail=result)
 
-    # Run AI categorization on newly ingested transactions
+    # Run AI categorization on newly ingested transactions (vectorized for speed)
     uncategorized = (
         db.query(Transaction)
         .filter(
@@ -72,13 +77,17 @@ async def upload_transactions(
     )
 
     categories_assigned = 0
-    for txn in uncategorized:
-        category, confidence = categorize_transaction(txn.description, txn.amount)
-        txn.category = category
-        txn.category_confidence = confidence
-        categories_assigned += 1
+    if uncategorized:
+        # Use vectorized batch categorization for large datasets
+        descriptions = [txn.description for txn in uncategorized]
+        results = categorize_batch_fast(descriptions)
 
-    db.commit()
+        for txn, (category, confidence) in zip(uncategorized, results):
+            txn.category = category
+            txn.category_confidence = confidence
+            categories_assigned += 1
+
+        db.commit()
 
     # Run anomaly detection
     anomaly_result = run_anomaly_detection_for_user(db, current_user.id)
