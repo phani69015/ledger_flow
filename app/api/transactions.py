@@ -66,31 +66,42 @@ async def upload_transactions(
     if "error" in result:
         raise HTTPException(status_code=422, detail=result)
 
-    # Run AI categorization on newly ingested transactions (vectorized for speed)
-    uncategorized = (
-        db.query(Transaction)
-        .filter(
-            Transaction.user_id == current_user.id,
-            Transaction.category.is_(None),
-        )
-        .all()
-    )
-
     categories_assigned = 0
-    if uncategorized:
-        # Use vectorized batch categorization for large datasets
-        descriptions = [txn.description for txn in uncategorized]
-        results = categorize_batch_fast(descriptions)
+    anomalies_detected = 0
 
-        for txn, (category, confidence) in zip(uncategorized, results):
-            txn.category = category
-            txn.category_confidence = confidence
-            categories_assigned += 1
+    # Only run categorization + anomaly detection if new transactions were inserted
+    if result["successful"] > 0:
+        # Run AI categorization on newly ingested transactions (vectorized for speed)
+        uncategorized = (
+            db.query(Transaction)
+            .filter(
+                Transaction.user_id == current_user.id,
+                Transaction.category.is_(None),
+            )
+            .all()
+        )
 
-        db.commit()
+        if uncategorized:
+            # Use vectorized batch categorization for large datasets
+            descriptions = [txn.description for txn in uncategorized]
+            results = categorize_batch_fast(descriptions)
 
-    # Run anomaly detection
-    anomaly_result = run_anomaly_detection_for_user(db, current_user.id)
+            for txn, (category, confidence) in zip(uncategorized, results):
+                txn.category = category
+                txn.category_confidence = confidence
+                categories_assigned += 1
+
+            db.commit()
+
+        # Run anomaly detection
+        anomaly_result = run_anomaly_detection_for_user(db, current_user.id)
+        anomalies_detected = anomaly_result.get("anomalies_found", 0)
+
+    # Build response message
+    if result["successful"] == 0 and result["duplicates_skipped"] > 0:
+        message = f"All {result['duplicates_skipped']} records already exist. No new data to process."
+    else:
+        message = f"Successfully processed {result['successful']} transactions from {file.filename}"
 
     return UploadResponse(
         filename=file.filename,
@@ -98,9 +109,9 @@ async def upload_transactions(
         successful=result["successful"],
         failed=result["failed"],
         duplicates_skipped=result["duplicates_skipped"],
-        anomalies_detected=anomaly_result.get("anomalies_found", 0),
+        anomalies_detected=anomalies_detected,
         categories_assigned=categories_assigned,
-        message=f"Successfully processed {result['successful']} transactions from {file.filename}",
+        message=message,
     )
 
 
